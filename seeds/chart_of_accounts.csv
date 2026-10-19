@@ -1,0 +1,8 @@
+account_number,account_name,account_type,normal_balance,statement
+1000,Cash,Asset,debit,Balance Sheet
+1200,Accounts Receivable,Asset,debit,Balance Sheet
+2000,Accounts Payable,Liability,credit,Balance Sheet
+2400,Deferred Revenue,Liability,credit,Balance Sheet
+4000,Subscription Revenue,Revenue,credit,Income Statement
+6000,Cloud Hosting Expense,Expense,debit,Income Statement
+6100,Software & Services Expense,Expense,debit,Income Statement

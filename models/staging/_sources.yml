@@ -1,0 +1,18 @@
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      Source-system extracts as they land: CRM customer master, billing-system contracts and invoices,
+      and ERP general-ledger journal lines. Read straight from CSV so the raw layer is never edited.
+    config:
+      external_location: "read_csv('{{ var('raw_path') }}/{name}.csv', header = true, all_varchar = true)"
+    tables:
+      - name: customers
+        description: CRM customer master.
+      - name: contract_lines
+        description: Billing-system contract lines. One row per subscription price period.
+      - name: invoices
+        description: Billing-system invoices.
+      - name: gl_journal_lines
+        description: ERP journal entry lines, all sources (system-generated and manual).

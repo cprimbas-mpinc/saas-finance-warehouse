@@ -1,0 +1,45 @@
+version: 2
+
+models:
+  - name: dim_customers
+    description: One row per customer with lifecycle dates and current ARR.
+    columns:
+      - name: customer_id
+        data_tests: [unique, not_null]
+
+  - name: fct_customer_mrr_movements
+    description: Customer x month contracted MRR with the movement versus the prior month.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [customer_id, month_start]
+    columns:
+      - name: movement_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["new", "expansion", "contraction", "churn", "reactivation", "flat", "inactive"]
+
+  - name: rpt_arr_rollforward
+    description: Monthly ARR bridge (beginning, new, expansion, reactivation, contraction, churn, ending).
+    columns:
+      - name: month_start
+        data_tests: [unique, not_null]
+
+  - name: rpt_net_revenue_retention
+    description: Trailing-twelve-month NRR and GRR on a customer-cohort basis.
+    columns:
+      - name: month_start
+        data_tests: [unique, not_null]
+
+  - name: fct_revenue_recognition
+    description: Invoice x month recognized revenue inside the reporting window.
+
+  - name: rpt_deferred_revenue_rollforward
+    description: Subledger deferred revenue bridge (beginning + billings - recognized = ending).
+    columns:
+      - name: month_start
+        data_tests: [unique, not_null]
+
+  - name: rpt_revenue_reconciliation
+    description: Monthly subledger-to-GL reconciliation for revenue (4000) and deferred revenue (2400).

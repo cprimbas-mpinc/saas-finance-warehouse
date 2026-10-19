@@ -1,0 +1,35 @@
+name: saas_finance_warehouse
+version: "1.0.0"
+config-version: 2
+profile: saas_finance_warehouse
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["dbt_tests"]
+macro-paths: ["macros"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  raw_path: "data/raw"            # where the source-system extracts land
+  window_start: "2023-01-01"      # first reporting month
+  window_end: "2025-12-01"        # last reporting month
+  recon_threshold_usd: 500        # REV-01 / REV-02 investigation threshold
+
+models:
+  saas_finance_warehouse:
+    staging:
+      +materialized: view
+    intermediate:
+      +materialized: table
+    marts:
+      +materialized: table
+    controls:
+      +materialized: table
+      +tags: ["sox_control"]
+
+seeds:
+  saas_finance_warehouse:
+    chart_of_accounts:
+      +column_types:
+        account_number: varchar

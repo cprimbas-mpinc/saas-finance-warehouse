@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: stg_customers
+    description: CRM customer master, typed.
+    columns:
+      - name: customer_id
+        data_tests: [unique, not_null]
+      - name: segment
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["SMB", "Mid-Market", "Enterprise"]
+
+  - name: stg_contract_lines
+    description: Billing contract lines, typed. end_month is inclusive; null means an evergreen monthly line.
+    columns:
+      - name: line_id
+        data_tests: [unique, not_null]
+      - name: customer_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
+      - name: billing_frequency
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["annual", "monthly"]
+
+  - name: stg_invoices
+    description: Billing invoices, typed. Master-data integrity is checked by control DQ-01, not here.
+    columns:
+      - name: invoice_id
+        data_tests: [unique, not_null]
+      - name: amount
+        data_tests: [not_null]
+
+  - name: stg_gl_journal_lines
+    description: ERP journal lines, typed.
+    columns:
+      - name: je_id
+        data_tests: [not_null]
+      - name: account_number
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('chart_of_accounts')
+                field: account_number
+      - name: je_source
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["billing_system", "revenue_engine", "cash_application", "ap_subledger", "manual"]

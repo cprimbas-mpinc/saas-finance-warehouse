@@ -1,0 +1,2 @@
+exception_key,invoice_id,customer_id,line_id,service_months,contracted_mrr,expected_amount,invoiced_amount,variance
+INV-000972,INV-000972,C-0006,LN-000017,12,10500.00,126000.00,128400.00,2400.00

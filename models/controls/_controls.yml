@@ -1,0 +1,31 @@
+version: 2
+
+# Each control model returns exception rows only. The test below raises a warning (not an error)
+# when a control finds exceptions: a control doing its job should not break the build. Exceptions
+# go to evidence/ for follow-up. See controls/control_matrix.yml for owners and objectives.
+
+models:
+  - name: ctl_rev_01_revenue_reconciliation
+    data_tests: &control_test
+      - control_has_no_exceptions:
+          config:
+            severity: warn
+  - name: ctl_rev_02_deferred_revenue_reconciliation
+    data_tests: *control_test
+  - name: ctl_bil_01_duplicate_billing
+    data_tests: *control_test
+  - name: ctl_bil_02_invoice_contract_variance
+    data_tests: *control_test
+  - name: ctl_dq_01_invoice_master_data_integrity
+    data_tests: *control_test
+  - name: ctl_gl_01_unbalanced_journal_entries
+    data_tests: *control_test
+  - name: ctl_gl_02_manual_je_segregation_of_duties
+    data_tests: *control_test
+  - name: ctl_arr_01_rollforward_integrity
+    data_tests: *control_test
+  - name: ctl_summary
+    description: Exception count and PASS/EXCEPTION result for every control in this run.
+    columns:
+      - name: control_id
+        data_tests: [unique, not_null]

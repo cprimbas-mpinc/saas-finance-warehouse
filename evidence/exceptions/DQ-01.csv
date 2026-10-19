@@ -1,0 +1,2 @@
+exception_key,invoice_id,customer_id,line_id,amount,missing_customer,missing_contract_line
+INV-001519,INV-001519,C-9001,LN-900001,1500.00,true,true

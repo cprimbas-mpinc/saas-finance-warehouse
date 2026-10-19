@@ -1,0 +1,99 @@
+# Control matrix: the single source of truth for what each automated control does and why.
+# scripts/build_evidence.py reads this file to label the evidence package for each run.
+
+controls:
+  - id: REV-01
+    name: Revenue subledger-to-GL reconciliation
+    model: ctl_rev_01_revenue_reconciliation
+    risk: Revenue in the financial statements doesn't match what the billing system supports (e.g., unsupported top-side entries).
+    objective: Recognized revenue per the billing subledger ties to GL account 4000 each month within the investigation threshold.
+    assertion: Occurrence, Accuracy
+    type: Detective
+    nature: Automated
+    frequency: Monthly (close)
+    owner: Revenue Accounting Manager
+    evidence: Reconciliation by month (rpt_revenue_reconciliation) with variances over threshold listed for investigation.
+
+  - id: REV-02
+    name: Deferred revenue subledger-to-GL reconciliation
+    model: ctl_rev_02_deferred_revenue_reconciliation
+    risk: The deferred revenue liability is misstated, so revenue is pulled forward or pushed out.
+    objective: Subledger deferred revenue balance ties to GL account 2400 at every month end within the threshold.
+    assertion: Completeness, Cut-off
+    type: Detective
+    nature: Automated
+    frequency: Monthly (close)
+    owner: Revenue Accounting Manager
+    evidence: Month-end balance comparison with variances over threshold.
+
+  - id: BIL-01
+    name: Duplicate billing detection
+    model: ctl_bil_01_duplicate_billing
+    risk: A contract term is invoiced twice, overstating billings, AR and revenue.
+    objective: No contract line is billed more than once for overlapping service months.
+    assertion: Occurrence
+    type: Detective
+    nature: Automated
+    frequency: Each billing run
+    owner: Billing Operations Lead
+    evidence: Pairs of invoices with overlapping service periods on the same contract line.
+
+  - id: BIL-02
+    name: Invoice-to-contract price accuracy
+    model: ctl_bil_02_invoice_contract_variance
+    risk: Customers are billed at prices that differ from the signed contract.
+    objective: Every invoice equals contracted MRR x service months for its contract line.
+    assertion: Accuracy
+    type: Detective
+    nature: Automated
+    frequency: Each billing run
+    owner: Billing Operations Lead
+    evidence: Invoices whose amount differs from the contract, with expected vs invoiced amount.
+
+  - id: DQ-01
+    name: Invoice master-data integrity
+    model: ctl_dq_01_invoice_master_data_integrity
+    risk: Revenue is recorded with no valid customer or contract behind it.
+    objective: Every invoice references a customer in the CRM master and a contract line in billing.
+    assertion: Existence, Completeness
+    type: Detective
+    nature: Automated
+    frequency: Daily
+    owner: Financial Data Engineering
+    evidence: Invoices with missing customer or contract references.
+
+  - id: GL-01
+    name: Journal entries balance
+    model: ctl_gl_01_unbalanced_journal_entries
+    risk: An out-of-balance entry misstates the ledger (e.g., transposition errors on manual entries).
+    objective: Total debits equal total credits for every journal entry.
+    assertion: Accuracy
+    type: Detective
+    nature: Automated
+    frequency: Daily
+    owner: General Ledger Manager
+    evidence: Journal entries where debits and credits differ, with the out-of-balance amount.
+
+  - id: GL-02
+    name: Manual journal entry segregation of duties
+    model: ctl_gl_02_manual_je_segregation_of_duties
+    risk: One person can both create and approve a manual entry, so errors or fraud go unreviewed.
+    objective: Every manual journal entry has an approver who is not its preparer.
+    assertion: Occurrence, Authorization
+    type: Detective
+    nature: Automated
+    frequency: Monthly (close)
+    owner: Controller
+    evidence: Manual entries that are unapproved or self-approved.
+
+  - id: ARR-01
+    name: ARR roll-forward integrity
+    model: ctl_arr_01_rollforward_integrity
+    risk: The ARR bridge reported to leadership and the board doesn't foot or doesn't carry forward between months.
+    objective: Beginning ARR + movements = ending ARR, and each month's beginning equals the prior month's ending.
+    assertion: Accuracy (management reporting)
+    type: Detective
+    nature: Automated
+    frequency: Monthly (metrics close)
+    owner: Head of Financial Data & Analytics
+    evidence: Months where the bridge doesn't foot or doesn't roll.

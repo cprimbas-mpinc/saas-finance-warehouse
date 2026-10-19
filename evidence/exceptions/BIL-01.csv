@@ -1,0 +1,2 @@
+exception_key,suspected_duplicate_invoice_id,original_invoice_id,customer_id,line_id,service_start_month,service_end_month,amount
+INV-001227,INV-001227,INV-001152,C-0021,LN-000065,2025-04-01,2026-03-01,76800.00
