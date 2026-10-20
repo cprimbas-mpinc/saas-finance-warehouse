@@ -133,7 +133,7 @@ def fmt(value: float | None, kind: str, signed: bool = False) -> str:
     if kind == "currency":
         return f"{sign}${v:,.0f}"
     if kind == "percent":
-        return f"{sign}{v * 100:.1f} pts" if signed else f"{sign}{v:.1%}"
+        return f"{sign}{v * 100:.2f} pts" if signed else f"{sign}{v:.1%}"
     if kind == "count":
         return f"{sign}{v:,.0f}"
     return f"{sign}{v:,.2f}"
@@ -252,7 +252,7 @@ def explain_change(layer, metric: str, period: str | None = None, compare_to: st
     # ------------------------------------------------------------------ facts
     direction = "up" if change > 0 else "down" if change < 0 else "flat"
     pct_text = f" ({pct:+.1%})" if pct is not None and kind != "percent" else ""
-    size = f"{abs(change) * 100:.1f} pts" if kind == "percent" else fmt(abs(change), kind)
+    size = f"{abs(change) * 100:.2f} pts" if kind == "percent" else fmt(abs(change), kind)
     facts = [f"{m.label} was {fmt(after, kind)} in {cur.label}, {direction} {size}{pct_text} "
              f"from {fmt(before, kind)} in {cmp.label}."]
     if drivers:
