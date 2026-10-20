@@ -9,7 +9,7 @@ import pytest
 from mcp.client.client import Client
 
 EXPECTED_TOOLS = {"ask", "list_metrics", "describe_metric", "query_metrics", "list_saved_queries",
-                  "run_saved_query", "get_control_status", "forecast_arr", "run_sql"}
+                  "run_saved_query", "get_control_status", "forecast_arr", "explain_change", "run_sql"}
 
 
 @pytest.fixture(scope="module")
@@ -75,3 +75,10 @@ def test_forecast_over_mcp(server):
     assert len(out["forecast"]) == 3
     assert out["certified"] is False
     assert "backtest" in out and out["assumptions"]["trailing_window_months"] == 6
+
+
+def test_explain_change_over_mcp(server):
+    out = call(server, "explain_change", {"metric": "nrr", "period": "2025-Q4", "compare_to": "prior_year"})
+    assert out["compared_to"] == "2024-Q4"
+    assert out["facts"] and out["contributions"]["segment"]["method"] == "mix_rate"
+    assert "error" in call(server, "explain_change", {"metric": "arr", "period": "2019-01"})

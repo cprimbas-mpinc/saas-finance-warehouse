@@ -1,6 +1,6 @@
 [project]
 name = "saas-finance-warehouse"
-version = "0.2.0"
+version = "0.3.0"
 description = "SaaS finance data warehouse with SOX-style controls, a governed semantic layer and an MCP server."
 requires-python = ">=3.10"
 

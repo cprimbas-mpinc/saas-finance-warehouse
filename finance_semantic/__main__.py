@@ -6,6 +6,7 @@
     python -m finance_semantic controls
     python -m finance_semantic lint           # catalog governance checks (CI runs this)
     python -m finance_semantic forecast [months]
+    python -m finance_semantic explain arr --period 2025-Q4 --vs prior_year
     python -m finance_semantic serve          # start the MCP server on stdio
 """
 
@@ -75,6 +76,13 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("lint", help="run catalog governance checks")
     f = sub.add_parser("forecast", help="driver-based ARR forecast with backtest")
     f.add_argument("months", nargs="?", type=int, default=6)
+    e = sub.add_parser("explain", help="explain why a metric changed between two periods")
+    e.add_argument("metric")
+    e.add_argument("--period", help="YYYY-MM, YYYY-Qn or YYYY (default: latest)")
+    e.add_argument("--grain", default="month", choices=["month", "quarter", "year"])
+    e.add_argument("--vs", dest="compare_to", default="prior_period", choices=["prior_period", "prior_year"])
+    e.add_argument("--by", nargs="+", dest="dimensions", help="dimensions to break down (default: all)")
+    e.add_argument("--json", action="store_true", help="print the raw JSON result")
     sub.add_parser("serve", help="run the MCP server on stdio")
     args = ap.parse_args(argv)
 
@@ -132,6 +140,16 @@ def main(argv: list[str] | None = None) -> None:
             for b in out["backtest"]["by_horizon"]:
                 print(f"{'+' + str(b['horizon_months']) + ' mo':<9}{b['driver_mape']:>15.1%}{b['naive_mape']:>15.1%}"
                       f"{b['origins_tested']:>15}")
+        elif args.cmd == "explain":
+            out = layer.explain_change(args.metric, period=args.period, compare_to=args.compare_to,
+                                       grain=args.grain, dimensions=args.dimensions)
+            if args.json:
+                print(json.dumps(out, indent=2, default=str))
+                return
+            for fact in out["facts"]:
+                print("-", fact)
+            for note in out["notes"]:
+                print("Note:", note)
         elif args.cmd == "controls":
             print_result(layer.control_status(include_exceptions=False))
     except SemanticError as e:

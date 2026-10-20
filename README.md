@@ -120,6 +120,7 @@ So the language understanding and the math are kept apart:
 | `list_saved_queries` / `run_saved_query` | Curated views: ARR bridge, board KPIs, retention by segment, revenue tie-out... |
 | `get_control_status` | Control results, exception detail and the exception log (owner, status, aging) |
 | `forecast_arr` | Driver-based ARR bridge forecast with its backtest record and range (labeled uncertified) |
+| `explain_change` | Why a metric moved: roll-forward drivers, segment/region/industry contributions, mix vs rate for ratios, and facts that reconcile |
 | `run_sql` | Escape hatch: one sandboxed SELECT, labeled uncertified |
 
 When Claude is the client, it handles the open-ended language and calls `query_metrics` directly. The built-in `ask` resolver also works on its own with any client. It's deterministic on purpose: the same question always maps to the same definitions, and it reports exactly how it read the question.
@@ -137,6 +138,18 @@ python -m finance_semantic ask "board KPIs"
 python -m finance_semantic ask "does revenue tie to the GL?" --sql
 python -m finance_semantic ask "any control exceptions?"
 ```
+
+### Explaining a change
+
+`python -m finance_semantic explain arr` answers "why did ARR move?" with arithmetic, not a story: the ARR bridge flows that explain the change (and $0 unexplained), each segment's, region's and industry's share of it, and for ratios like NRR or ARPA, how much came from mix versus rate. The output is a set of facts that reconcile, which is what an LLM should write variance commentary from ([ADR 0005](docs/adr/0005-decompose-before-commentary.md)).
+
+```
+$ python -m finance_semantic explain arpa --by segment
+- ARR per customer was $44,715 in 2025-12, down $843 (-1.8%) from $45,558 in 2025-11.
+- By segment: mix shift -$962, rate change within each segment +$120. Largest: Enterprise -$638 (rate $206,186 to $206,186); ...
+```
+
+ARPA fell, but not because pricing got worse: it rose within segments, and the drop is all mix. Method and examples: [`docs/variance_commentary.md`](docs/variance_commentary.md).
 
 ### Forecasting
 
@@ -216,8 +229,9 @@ pip install -r requirements.txt     # add -dev for the linter
 python run_pipeline.py             # build: planted errors, controls catch them
 python run_pipeline.py --clean     # same company, nothing planted: every control passes
 python -m finance_semantic ask "ARR by segment last 6 months"
+python -m finance_semantic explain arr --period 2025-Q4 --vs prior_year
 python -m finance_semantic forecast 6
-pytest -q                          # 61 tests: controls, finance logic, semantic layer, forecast, MCP server
+pytest -q                          # 77 tests: controls, finance logic, semantic layer, explain, forecast, MCP server
 ```
 
 ## Tests
@@ -227,16 +241,17 @@ pytest -q                          # 61 tests: controls, finance logic, semantic
 | `tests/test_pipeline.py` | Each planted error is caught by exactly its control; clean data passes everything; the ARR and deferred revenue bridges foot; every billed dollar is recognized; the generator is deterministic |
 | `tests/test_semantic_layer.py` | Semantic answers match the warehouse's own reports; quarter roll-ups use period-end balances and summed flows; segments sum to totals; filter values can't inject SQL; `run_sql` allows one sandboxed SELECT and nothing else; common English phrasings resolve to the right metrics, dimensions and time windows |
 | `tests/test_governance.py` | The catalog linter passes on the real catalog and catches each kind of bad definition |
+| `tests/test_explain.py` | Every decomposition reconciles exactly: bridges foot month over month and year over year, contributions sum to the change, mix + rate equals the change; the ARPA drop is attributed to mix, not price |
 | `tests/test_forecast.py` | The forecast bridge foots and chains from the last actual month; the range contains the forecast; the backtest scores every horizon; on synthetic data with stable drivers the model is exact and the trend isn't |
-| `tests/test_mcp_server.py` | A real MCP client lists 9 read-only tools and gets correct answers and clean error messages |
+| `tests/test_mcp_server.py` | A real MCP client lists 10 read-only tools and gets correct answers and clean error messages |
 
 ## Roadmap
 
 This is a living project; see [`CHANGELOG.md`](CHANGELOG.md).
 
-- **Next:** explain-change (decompose a metric's movement into drivers and segments, as grounded input for variance commentary); daily revenue proration, mid-term amendments and credit memos; a metrics-change review workflow (who changed a definition, when, and why).
+- **Next:** daily revenue proration, mid-term amendments and credit memos; a metrics-change review workflow (who changed a definition, when, and why).
 - **Then:** Snowflake target alongside DuckDB; scheduled builds on a close calendar; exception routing to owners; usage-based billing and multi-currency.
-- **AI:** variance commentary drafted from the semantic layer and reviewed by a person; anomaly triage on control exceptions.
+- **AI:** a commentary eval set (drafts scored on whether every number traces to an `explain_change` fact); anomaly triage on control exceptions.
 
 ## Taking this to production
 

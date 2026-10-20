@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 (2026-10-20)
+
+- **Explain a change:** `explain_change` (MCP tool and `python -m finance_semantic explain`) decomposes a metric's movement versus the prior period or prior year: roll-forward drivers for ARR and deferred revenue, sum-of-parts for net new ARR, additive contributions by segment, region and industry, and an exact mix/rate split for NRR, GRR and ARPA. Returns plain-English facts that reconcile, for grounded variance commentary. See `docs/variance_commentary.md` and ADR 0005.
 
 - **ARR forecast:** driver-based forecast of the ARR bridge (`python -m finance_semantic forecast`, MCP tool `forecast_arr`) with a rolling-origin backtest against a straight-line trend and ranges from the backtest's own errors. The metrics snapshot now carries the forecast and its track record. See `docs/forecasting.md`.
 - **Control exception log:** `rpt_control_exception_log` tracks each control finding to an owner, root cause, status and due date, flags unassigned and overdue items, and is surfaced in the evidence package and `get_control_status`. Controls are registered once in a single macro.

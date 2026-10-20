@@ -29,6 +29,8 @@ How to answer finance questions:
 3. For recurring views (ARR bridge, board KPIs, revenue tie-out) use `run_saved_query`.
 4. For "do the numbers tie?" or SOX / control questions, call `get_control_status`.
    For "where will ARR be in N months?", call `forecast_arr` and report its assumptions and backtest error.
+   For "why did X move?" or variance commentary, call `explain_change` and write only from its `facts`:
+   lead with the change and its largest driver, name the biggest offset, and don't invent causes.
 5. Use `run_sql` only for questions no metric covers, and say the result is uncertified.
 State the metric definition when it matters to the answer. If the user asks how a number was computed,
 show the returned SQL. Contraction and churn are negative numbers; NRR and GRR are ratios (1.05 = 105%).
@@ -107,6 +109,18 @@ def forecast_arr(months: int = 6, window: int = 6) -> dict[str, Any]:
     with assumptions, backtest accuracy versus a naive trend, and backtest-derived ranges. Uncertified:
     present it as a projection, not a reported number."""
     return _safe(layer().forecast_arr, months=months, window=window)
+
+
+@mcp.tool(annotations=READ_ONLY)
+def explain_change(metric: str, period: str | None = None, compare_to: str = "prior_period", grain: str = "month",
+                   dimensions: list[str] | None = None) -> dict[str, Any]:
+    """Why did a metric move? Compares `period` (YYYY-MM, YYYY-Qn or YYYY; default: latest) with the prior
+    period or the same period last year (compare_to: prior_period | prior_year). Returns the change, the
+    drivers that explain it (the ARR bridge flows, deferred revenue billings vs recognition), each segment,
+    region and industry's contribution (mix vs rate for ratios like NRR), plain-English facts that reconcile
+    to the change, and the SQL. Write variance commentary only from these facts."""
+    return _safe(layer().explain_change, metric, period=period, compare_to=compare_to, grain=grain,
+                 dimensions=dimensions)
 
 
 @mcp.tool(annotations=READ_ONLY)
