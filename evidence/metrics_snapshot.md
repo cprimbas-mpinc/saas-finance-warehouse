@@ -1,6 +1,6 @@
 # Metrics Snapshot
 
-Halyard Software, Inc. (synthetic data) · generated 2026-10-20 10:54 UTC
+Halyard Software, Inc. (synthetic data) · generated 2026-10-20 11:02 UTC
 
 ## ARR bridge, last 12 months
 
@@ -50,3 +50,27 @@ Halyard Software, Inc. (synthetic data) · generated 2026-10-20 10:54 UTC
 | 2025-10 | $1,040,100 | $1,040,100 | $0 | $5,036,650 | $5,036,650 |
 | 2025-11 | $1,088,600 | $1,088,600 | $0 | $5,413,250 | $5,413,250 |
 | 2025-12 | $1,113,300 | $1,113,300 | $0 | $5,057,950 | $5,057,950 |
+
+## ARR forecast, next 6 months (projection, uncertified)
+
+Driver-based bridge forecast from the last actual month (2025-12). Trailing 6-month drivers: new $562,500/month, expansion 0.60%/month, contraction -0.20%/month, churn -0.36%/month. Method and caveats: [docs/forecasting.md](../docs/forecasting.md).
+
+| Month | Beginning | New + reactivation | Expansion | Contraction + churn | Ending | Low (p10) | High (p90) |
+|---|---|---|---|---|---|---|---|
+| 2026-01 | $13,280,400 | $565,500 | $79,553 | -$74,398 | $13,851,055 | $13,535,774 | $14,399,733 |
+| 2026-02 | $13,851,055 | $565,500 | $82,972 | -$77,595 | $14,421,931 | $13,988,413 | $15,196,741 |
+| 2026-03 | $14,421,931 | $565,500 | $86,391 | -$80,793 | $14,993,029 | $14,460,221 | $16,160,111 |
+| 2026-04 | $14,993,029 | $565,500 | $89,812 | -$83,993 | $15,564,349 | $15,136,959 | $16,943,874 |
+| 2026-05 | $15,564,349 | $565,500 | $93,235 | -$87,193 | $16,135,890 | $15,917,202 | $17,514,066 |
+| 2026-06 | $16,135,890 | $565,500 | $96,658 | -$90,395 | $16,707,654 | $16,581,016 | $18,494,765 |
+
+Backtest (rolling origin) versus a straight-line trend:
+
+| Months ahead | Origins | Driver MAPE | Naive MAPE | Driver bias |
+|---|---|---|---|---|
+| +1 | 23 | 2.1% | 2.3% | -0.3% |
+| +2 | 22 | 2.9% | 3.3% | -1.1% |
+| +3 | 21 | 3.8% | 4.2% | -1.8% |
+| +4 | 20 | 4.5% | 4.5% | -2.8% |
+| +5 | 19 | 4.7% | 4.9% | -3.7% |
+| +6 | 18 | 5.0% | 4.9% | -4.5% |
