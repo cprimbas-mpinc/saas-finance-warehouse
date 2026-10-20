@@ -1,6 +1,6 @@
 # Control Evidence Package
 
-**Company:** Halyard Software, Inc. (synthetic) · **Run:** 2026-10-20 10:50 UTC · **Data mode:** seeded (seed 42)
+**Company:** Halyard Software, Inc. (synthetic) · **Run:** 2026-10-20 10:54 UTC · **Data mode:** seeded (seed 42)
 
 Each control below is an automated query over the full population (not a sample). A control model returns only exception rows, so an empty result is the evidence of operating effectiveness for the run.
 
@@ -27,6 +27,19 @@ Source files are fingerprinted so a reviewer can confirm the evidence came from 
 | customers.csv | 333 | c0a0104a8c2269a6 |
 | gl_journal_lines.csv | 316 | b1b1cecd33555e3e |
 | invoices.csv | 2175 | 4f4664df75517f49 |
+
+## Exception log
+
+Every exception found, tracked to resolution. `unassigned` = found but not yet triaged; `cleared` = logged earlier and no longer found by the controls.
+
+| Control | Exception | Status | Owner | Due | Days to resolve | Aging | Root cause |
+|---|---|---|---|---|---|---|---|
+| BIL-01 | INV-001227 | resolved | Billing Operations Lead | 2025-04-15 | 3 |  | Invoice batch re-run after a timeout billed an annual term a second time |
+| BIL-02 | INV-000972 | resolved | Billing Operations Lead | 2025-02-13 | 6 |  | Price uplift loaded in billing before the contract amendment was signed |
+| DQ-01 | INV-001519 | unassigned |  |  |  |  |  |
+| GL-01 | JE-2025-03-006 | resolved | General Ledger Manager | 2025-04-04 | 2 |  | Transposition error on a manual accrual (12,400 debit vs 12,040 credit) |
+| GL-02 | JE-2025-09-006 | resolved | Controller | 2025-10-07 | 1 |  | Preparer held approval rights and approved their own entry |
+| REV-01 | 2025-06-01 | investigating | Revenue Accounting Manager | 2025-07-10 |  | **overdue** (196 days open) | Manual entry JE-2025-06-006 "Q2 revenue true-up per sales leadership" has no billing-subledger support |
 
 ## Control detail
 

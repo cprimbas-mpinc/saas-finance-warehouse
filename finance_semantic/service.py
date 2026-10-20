@@ -166,8 +166,15 @@ class FinanceSemanticLayer:
                 entry["exceptions"] = self.warehouse.records(
                     f'select * exclude (exception_key) from "{ctl["model"]}" limit {int(max_exceptions)}')
             controls.append(entry)
+        log = self.warehouse.records(
+            "select * from rpt_control_exception_log order by is_overdue desc, control_id, exception_key")
+        open_items = [e for e in log if e["status"] in ("unassigned", "open", "investigating")]
+        passed = sum(1 for c in controls if c["result"] == "PASS")
         return {"controls": controls,
-                "summary": f"{sum(1 for c in controls if c['result'] == 'PASS')} of {len(controls)} controls passed",
+                "summary": f"{passed} of {len(controls)} controls passed; {len(open_items)} exception(s) still open, "
+                           f"{sum(1 for e in open_items if e['is_overdue'])} overdue, "
+                           f"{sum(1 for e in open_items if e['status'] == 'unassigned')} awaiting triage",
+                "exception_log": log,
                 "data_window": self._window()}
 
     # ------------------------------------------------------------------ escape hatch
