@@ -9,7 +9,7 @@ import pytest
 from mcp.client.client import Client
 
 EXPECTED_TOOLS = {"ask", "list_metrics", "describe_metric", "query_metrics", "list_saved_queries",
-                  "run_saved_query", "get_control_status", "run_sql"}
+                  "run_saved_query", "get_control_status", "forecast_arr", "run_sql"}
 
 
 @pytest.fixture(scope="module")
