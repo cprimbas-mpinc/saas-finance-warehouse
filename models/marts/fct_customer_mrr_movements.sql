@@ -19,6 +19,8 @@ select
     b.month_start,
     b.customer_id,
     c.segment,
+    c.region,
+    c.industry,
     b.mrr,
     b.prior_mrr,
     b.mrr - b.prior_mrr as mrr_change,

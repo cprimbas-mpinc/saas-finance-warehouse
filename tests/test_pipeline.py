@@ -15,30 +15,15 @@ import sys
 from pathlib import Path
 
 import duckdb
-import pytest
+
+from conftest import open_warehouse
 
 ROOT = Path(__file__).resolve().parents[1]
 ALL_CONTROLS = {"REV-01", "REV-02", "BIL-01", "BIL-02", "DQ-01", "GL-01", "GL-02", "ARR-01"}
 
 
-def run_pipeline(workdir: Path, clean: bool) -> Path:
-    cmd = [sys.executable, str(ROOT / "run_pipeline.py"), "--workdir", str(workdir)] + (["--clean"] if clean else [])
-    subprocess.run(cmd, check=True, capture_output=True, text=True)
-    return workdir
-
-
-@pytest.fixture(scope="session")
-def seeded(tmp_path_factory) -> Path:
-    return run_pipeline(tmp_path_factory.mktemp("seeded"), clean=False)
-
-
-@pytest.fixture(scope="session")
-def clean(tmp_path_factory) -> Path:
-    return run_pipeline(tmp_path_factory.mktemp("clean"), clean=True)
-
-
 def connect(workdir: Path) -> duckdb.DuckDBPyConnection:
-    return duckdb.connect(str(workdir / "warehouse.duckdb"), read_only=True)
+    return open_warehouse(workdir)
 
 
 def control_results(workdir: Path) -> dict[str, int]:

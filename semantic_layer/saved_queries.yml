@@ -1,0 +1,60 @@
+# Curated questions: the handful of views leadership asks for every month, defined once so everyone
+# gets the same answer. Each one is a regular semantic-layer query plus the phrases that should
+# route to it.
+
+saved_queries:
+  arr_bridge:
+    title: ARR bridge
+    description: Monthly ARR roll-forward from beginning to ending ARR, the board's standard growth view.
+    phrases: [arr bridge, arr waterfall, arr roll forward, arr rollforward, what drove arr, arr walk]
+    query:
+      metrics: [beginning_arr, new_arr, expansion_arr, reactivation_arr, contraction_arr, churned_arr, arr]
+      grain: month
+      last_n_periods: 12
+
+  board_kpis:
+    title: Board KPI scorecard
+    description: Quarterly ARR, net new ARR, retention, customers and ARR per customer.
+    phrases: [board kpis, board metrics, kpi scorecard, scorecard, board deck numbers, board pack]
+    query:
+      metrics: [arr, net_new_arr, nrr, grr, paying_customers, arpa]
+      grain: quarter
+      last_n_periods: 4
+
+  retention_by_segment:
+    title: Retention by segment
+    description: Latest trailing-12 NRR and GRR for each customer segment.
+    phrases: [retention by segment, nrr by segment, segment retention]
+    query:
+      metrics: [nrr, grr]
+      group_by: [segment]
+      grain: month
+      last_n_periods: 1
+
+  segment_mix:
+    title: Segment mix
+    description: Where ARR comes from today, by segment.
+    phrases: [segment mix, arr mix, customer mix, arr by segment today]
+    query:
+      metrics: [arr, paying_customers, arpa]
+      group_by: [segment]
+      grain: month
+      last_n_periods: 1
+
+  revenue_tie_out:
+    title: Revenue tie-out to the GL
+    description: Subledger revenue vs GL revenue by month, with the variance investigated under REV-01.
+    phrases: [does revenue tie to the gl, revenue tie to the gl, revenue tie out, revenue tieout, does revenue tie, revenue reconciliation, tie out revenue, subledger to gl]
+    query:
+      metrics: [recognized_revenue, gl_revenue, revenue_variance]
+      grain: month
+      last_n_periods: 12
+
+  revenue_and_deferred:
+    title: Billings, revenue and deferred revenue
+    description: Quarterly billings vs recognized revenue and the period-end deferred revenue balance.
+    phrases: [billings vs revenue, deferred revenue trend, billings and revenue]
+    query:
+      metrics: [billings, recognized_revenue, deferred_revenue]
+      grain: quarter
+      last_n_periods: 4

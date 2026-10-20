@@ -1,0 +1,271 @@
+# Semantic layer: the governed definitions of every metric the MCP server can answer.
+#
+# Three building blocks:
+#   dimensions       conformed attributes you can group or filter by
+#   semantic_models  warehouse tables, each with a time column and measures (an expression + how it aggregates)
+#   metrics          what people ask for: a single measure, or a ratio of two
+#
+# Each measure aggregates twice: first `agg` within a month, then `time_agg` when rolling months up
+# to a quarter or year. Flows (new ARR, revenue) sum across months. Balances (ARR, deferred revenue)
+# take the period-end value, and beginning ARR takes the period-start value. Getting this wrong is
+# the most common way self-serve tools produce a quarterly ARR that's 3x too big.
+
+version: 1
+
+dimensions:
+  segment:
+    description: Customer segment (SMB, Mid-Market, Enterprise). 'Unmapped' = invoice with no customer master record (see control DQ-01).
+  region:
+    description: Customer billing region.
+  industry:
+    description: Customer industry.
+
+semantic_models:
+  customer_mrr:
+    table: fct_customer_mrr_movements
+    time_column: month_start
+    dimensions: [segment, region, industry]
+    measures:
+      arr:              {expr: "mrr * 12", agg: sum, time_agg: last}
+      beginning_arr:    {expr: "prior_mrr * 12", agg: sum, time_agg: first}
+      new_arr:          {expr: "case when movement_type = 'new' then mrr_change * 12 else 0 end", agg: sum, time_agg: sum}
+      expansion_arr:    {expr: "case when movement_type = 'expansion' then mrr_change * 12 else 0 end", agg: sum, time_agg: sum}
+      reactivation_arr: {expr: "case when movement_type = 'reactivation' then mrr_change * 12 else 0 end", agg: sum, time_agg: sum}
+      contraction_arr:  {expr: "case when movement_type = 'contraction' then mrr_change * 12 else 0 end", agg: sum, time_agg: sum}
+      churned_arr:      {expr: "case when movement_type = 'churn' then mrr_change * 12 else 0 end", agg: sum, time_agg: sum}
+      net_new_arr:      {expr: "mrr_change * 12", agg: sum, time_agg: sum}
+      paying_customers: {expr: "case when mrr > 0 then customer_id end", agg: count_distinct, time_agg: last}
+      new_logos:        {expr: "case when movement_type = 'new' then customer_id end", agg: count_distinct, time_agg: sum}
+      churned_logos:    {expr: "case when movement_type = 'churn' then customer_id end", agg: count_distinct, time_agg: sum}
+
+  retention_cohort:
+    table: fct_customer_retention_pairs
+    time_column: month_start
+    dimensions: [segment, region, industry]
+    measures:
+      cohort_arr_year_ago: {expr: arr_year_ago, agg: sum, time_agg: last}
+      cohort_arr_today:    {expr: arr_today, agg: sum, time_agg: last}
+      cohort_arr_retained: {expr: arr_retained_capped, agg: sum, time_agg: last}
+
+  revenue:
+    table: fct_revenue_recognition
+    time_column: revenue_month
+    dimensions: [segment, region, industry]
+    measures:
+      recognized_revenue: {expr: recognized_amount, agg: sum, time_agg: sum}
+
+  billings:
+    table: fct_billings
+    time_column: billing_month
+    dimensions: [segment, region, industry]
+    measures:
+      billings: {expr: amount, agg: sum, time_agg: sum}
+
+  deferred_revenue:
+    table: rpt_deferred_revenue_rollforward
+    time_column: month_start
+    dimensions: []
+    measures:
+      deferred_revenue_balance: {expr: ending_deferred_revenue, agg: sum, time_agg: last}
+
+  gl_reconciliation:
+    table: rpt_revenue_reconciliation
+    time_column: month_start
+    dimensions: []
+    measures:
+      gl_revenue:        {expr: gl_revenue, agg: sum, time_agg: sum}
+      revenue_variance:  {expr: revenue_variance, agg: sum, time_agg: sum}
+
+metrics:
+  arr:
+    label: ARR
+    type: simple
+    measure: customer_mrr.arr
+    format: currency
+    description: Annual recurring revenue = contracted MRR x 12 at period end. Excludes one-time and usage fees.
+    synonyms: [annual recurring revenue, ending arr, run rate, recurring revenue]
+    owner: Head of Financial Data & Analytics
+    certified: true
+
+  beginning_arr:
+    label: Beginning ARR
+    type: simple
+    measure: customer_mrr.beginning_arr
+    format: currency
+    description: ARR at the start of the period (the prior period's ending ARR).
+    synonyms: [opening arr, starting arr]
+    owner: Head of Financial Data & Analytics
+    certified: true
+
+  new_arr:
+    label: New ARR
+    type: simple
+    measure: customer_mrr.new_arr
+    format: currency
+    description: ARR from customers in their first paid month.
+    synonyms: [new logo arr, new business arr, new bookings]
+    owner: Head of Financial Data & Analytics
+    certified: true
+
+  expansion_arr:
+    label: Expansion ARR
+    type: simple
+    measure: customer_mrr.expansion_arr
+    format: currency
+    description: Increase in ARR from existing paying customers, netted at the customer level.
+    synonyms: [expansion, upsell, upsell arr]
+    owner: Head of Financial Data & Analytics
+    certified: true
+
+  reactivation_arr:
+    label: Reactivation ARR
+    type: simple
+    measure: customer_mrr.reactivation_arr
+    format: currency
+    description: ARR from customers returning after a period at zero. Kept separate from new so win-backs don't inflate new-logo growth.
+    synonyms: [reactivation, win back, winback arr]
+    owner: Head of Financial Data & Analytics
+    certified: true
+
+  contraction_arr:
+    label: Contraction ARR
+    type: simple
+    measure: customer_mrr.contraction_arr
+    format: currency
+    description: Decrease in ARR from customers who still pay (negative number).
+    synonyms: [contraction, downsell, downgrade]
+    owner: Head of Financial Data & Analytics
+    certified: true
+
+  churned_arr:
+    label: Churned ARR
+    type: simple
+    measure: customer_mrr.churned_arr
+    format: currency
+    description: Prior ARR of customers who dropped to zero (negative number).
+    synonyms: [churn, churned revenue, lost arr, arr churn]
+    owner: Head of Financial Data & Analytics
+    certified: true
+
+  net_new_arr:
+    label: Net new ARR
+    type: simple
+    measure: customer_mrr.net_new_arr
+    format: currency
+    description: New + expansion + reactivation + contraction + churn. Equals the change in ARR over the period.
+    synonyms: [net new, arr growth, change in arr]
+    owner: Head of Financial Data & Analytics
+    certified: true
+
+  paying_customers:
+    label: Paying customers
+    type: simple
+    measure: customer_mrr.paying_customers
+    format: count
+    description: Customers with contracted MRR above zero at period end.
+    synonyms: [customers, customer count, active customers, logos, accounts]
+    owner: Head of Financial Data & Analytics
+    certified: true
+
+  new_logos:
+    label: New logos
+    type: simple
+    measure: customer_mrr.new_logos
+    format: count
+    description: Customers in their first paid month during the period.
+    synonyms: [new customers, customer adds, new accounts]
+    owner: Head of Financial Data & Analytics
+    certified: true
+
+  churned_logos:
+    label: Churned logos
+    type: simple
+    measure: customer_mrr.churned_logos
+    format: count
+    description: Customers who dropped to zero ARR during the period.
+    synonyms: [churned customers, lost customers, logo churn]
+    owner: Head of Financial Data & Analytics
+    certified: true
+
+  arpa:
+    label: ARR per customer
+    type: ratio
+    numerator: customer_mrr.arr
+    denominator: customer_mrr.paying_customers
+    format: currency
+    description: Average ARR per paying customer at period end.
+    synonyms: [average arr per customer, arpa, arpc, average contract value, acv]
+    owner: Head of Financial Data & Analytics
+    certified: true
+
+  nrr:
+    label: Net revenue retention
+    type: ratio
+    numerator: retention_cohort.cohort_arr_today
+    denominator: retention_cohort.cohort_arr_year_ago
+    format: percent
+    description: ARR today from customers paying 12 months ago, divided by their ARR then. Includes expansion; excludes new logos.
+    synonyms: [net revenue retention, net retention, net dollar retention, ndr, nrr]
+    owner: Head of Financial Data & Analytics
+    certified: true
+
+  grr:
+    label: Gross revenue retention
+    type: ratio
+    numerator: retention_cohort.cohort_arr_retained
+    denominator: retention_cohort.cohort_arr_year_ago
+    format: percent
+    description: Like NRR, but each customer's ARR today is capped at its ARR a year ago, so expansion can't offset churn. Always <= 100%.
+    synonyms: [gross revenue retention, gross retention, gross dollar retention, gdr, grr]
+    owner: Head of Financial Data & Analytics
+    certified: true
+
+  recognized_revenue:
+    label: Recognized revenue
+    type: simple
+    measure: revenue.recognized_revenue
+    format: currency
+    description: Subscription revenue recognized ratably over each invoice's service months (GAAP revenue per the billing subledger).
+    synonyms: [revenue, gaap revenue, subscription revenue, sales]
+    owner: Revenue Accounting Manager
+    certified: true
+
+  billings:
+    label: Billings
+    type: simple
+    measure: billings.billings
+    format: currency
+    description: Invoice amounts by invoice month. Differs from revenue on timing; the gap flows through deferred revenue.
+    synonyms: [invoiced, invoicing, billed, bookings billed]
+    owner: Revenue Accounting Manager
+    certified: true
+
+  deferred_revenue:
+    label: Deferred revenue
+    type: simple
+    measure: deferred_revenue.deferred_revenue_balance
+    format: currency
+    description: Billed but not yet recognized revenue at period end (subledger). Ties to GL 2400 via control REV-02.
+    synonyms: [deferred revenue balance, unearned revenue, deferred]
+    owner: Revenue Accounting Manager
+    certified: true
+
+  gl_revenue:
+    label: GL revenue
+    type: simple
+    measure: gl_reconciliation.gl_revenue
+    format: currency
+    description: Net activity in GL account 4000 Subscription Revenue. Includes manual entries made outside the subledger.
+    synonyms: [ledger revenue, revenue per gl, revenue per the ledger, book revenue]
+    owner: General Ledger Manager
+    certified: true
+
+  revenue_variance:
+    label: Revenue variance (GL - subledger)
+    type: simple
+    measure: gl_reconciliation.revenue_variance
+    format: currency
+    description: GL revenue minus subledger revenue. Nonzero months are investigated under control REV-01.
+    synonyms: [revenue variance, reconciliation variance, recon variance, unreconciled revenue]
+    owner: Revenue Accounting Manager
+    certified: true

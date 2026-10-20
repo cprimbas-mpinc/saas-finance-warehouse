@@ -1,14 +1,28 @@
 # SaaS Finance Warehouse
 
-A working finance data warehouse for a B2B SaaS company. It covers the subscription metrics leadership runs the business on (ARR bridge, NRR/GRR), the revenue and deferred-revenue numbers that go into the financial statements, and **SOX-style controls that run as code** and produce audit-ready evidence on every build.
+A working finance data platform for a B2B SaaS company, in three layers:
 
-The company, Halyard Software, Inc., is fictional and all data is synthetic: ~330 customers, ~2,200 invoices and 36 months of general ledger. By default the generator also plants six realistic errors (a duplicate invoice, an unsupported top-side revenue entry, a self-approved journal entry, and so on). The point is to show the controls catching them.
+1. **A warehouse** (dbt + DuckDB) with the subscription metrics leadership runs the business on (ARR bridge, NRR/GRR) and the revenue and deferred-revenue numbers that go into the financial statements.
+2. **SOX-style controls that run as code** on every build and produce audit-ready evidence.
+3. **A governed semantic layer behind an MCP server**, so anyone (or any AI assistant) can ask finance questions in plain English and get the *certified* answer, along with its definition and the exact SQL behind it.
+
+The company, Halyard Software, Inc., is fictional and all data is synthetic: ~330 customers, ~2,200 invoices and 36 months of general ledger. The generator plants six realistic accounting errors so the controls have something to catch.
 
 ```
-python run_pipeline.py
+$ python -m finance_semantic ask "NRR and GRR by segment"
+
+Understood as: nrr, grr, by segment, monthly from 2025-12 to 2025-12
+  matched: metric nrr ('nrr'); metric grr ('grr'); group by segment
+
+period   segment     Net revenue retention  Gross revenue retention
+-------  ----------  ---------------------  -----------------------
+2025-12  Enterprise                 103.3%                    98.1%
+2025-12  Mid-Market                 101.6%                    93.1%
+2025-12         SMB                  90.5%                    84.2%
 ```
 
 ```
+$ python run_pipeline.py
   REV-01  EXCEPTION    1  Revenue subledger-to-GL reconciliation
   REV-02  PASS         0  Deferred revenue subledger-to-GL reconciliation
   BIL-01  EXCEPTION    1  Duplicate billing detection
@@ -31,61 +45,116 @@ At a scaling SaaS company, Finance gets the same question from three directions:
 - **The auditors ask** whether revenue in the ledger is supported by what was actually billed and delivered.
 - **The CFO asks** why those two numbers don't match.
 
-Those answers usually live in separate spreadsheets owned by separate people. This warehouse puts them on one set of tested models: one contract-level source of truth feeds both the metrics and the accounting, and the controls show where they diverge and why.
+Then everyone else asks for "just a quick number" in Slack. Those answers usually live in separate spreadsheets and ad-hoc queries, each with its own definition of ARR.
+
+This project puts them on one set of tested models. A single contract-level source of truth feeds both the metrics and the accounting. The controls show where the two diverge and why. The semantic layer means a self-serve question gets the same answer the board deck does.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    subgraph Sources["Source systems (synthetic CSV extracts)"]
-        CRM[CRM<br/>customers]
-        BILL[Billing<br/>contract lines, invoices]
-        ERP[ERP<br/>GL journal lines]
+    subgraph Sources["Source systems (synthetic extracts)"]
+        CRM[CRM]
+        BILL[Billing]
+        ERP[ERP / GL]
     end
-    subgraph Staging["staging/ (typed, untouched)"]
-        S[stg_*]
+    subgraph Warehouse["dbt + DuckDB warehouse"]
+        STG[staging]
+        INT[intermediate]
+        MART[marts<br/>ARR, NRR, revenue,<br/>deferred, reconciliation]
+        CTL[controls<br/>exception rows only]
     end
-    subgraph Int["intermediate/"]
-        MRR[int_customer_mrr_monthly]
-        SCHED[int_invoice_revenue_schedule]
-        GLM[int_gl_account_monthly]
+    subgraph Semantic["Semantic layer"]
+        DEF[metrics.yml<br/>governed definitions]
+        SQ[saved_queries.yml<br/>curated views]
+        COMP[compiler<br/>parameterized SQL]
+        NL[English resolver]
     end
-    subgraph Marts["marts/"]
-        ARR[rpt_arr_rollforward]
-        NRR[rpt_net_revenue_retention]
-        DEF[rpt_deferred_revenue_rollforward]
-        REC[rpt_revenue_reconciliation]
-    end
-    subgraph Controls["controls/ (exception rows only)"]
-        CTL[ctl_* + ctl_summary]
-    end
-    EVD[evidence/<br/>control evidence package]
+    MCP[MCP server<br/>8 read-only tools]
+    USERS[Claude / any MCP client<br/>CLI]
+    EVD[evidence/]
 
-    CRM --> S
-    BILL --> S
-    ERP --> S
-    S --> MRR --> ARR
-    MRR --> NRR
-    S --> SCHED --> DEF --> REC
-    S --> GLM --> REC
-    REC --> CTL
-    ARR --> CTL
-    S --> CTL
-    CTL --> EVD
+    CRM --> STG
+    BILL --> STG
+    ERP --> STG
+    STG --> INT --> MART --> CTL --> EVD
+    MART --> COMP
+    CTL --> MCP
+    DEF --> COMP
+    SQ --> NL
+    DEF --> NL --> COMP --> MCP --> USERS
 ```
 
-| Layer | What lives there | Materialization |
-|---|---|---|
-| `staging/` | Raw extracts typed and renamed. Never edited, never filtered. | view |
-| `intermediate/` | Reusable building blocks: densified customer-month MRR, ratable revenue schedule, GL activity and balances | table |
-| `marts/` | What people consume: ARR bridge, retention, revenue, deferred revenue, reconciliation workpaper | table |
-| `controls/` | One model per control, returning **only exception rows** | table |
+| Layer | What lives there |
+|---|---|
+| `models/staging/` | Raw extracts typed and renamed. Never edited, never filtered. |
+| `models/intermediate/` | Building blocks: densified customer-month MRR, ratable revenue schedule, GL activity and balances |
+| `models/marts/` | What people consume: ARR bridge, retention, revenue, billings, deferred revenue, reconciliation |
+| `models/controls/` | One model per control, returning **only exception rows** |
+| `semantic_layer/` | Metric definitions and curated saved queries (YAML) |
+| `finance_semantic/` | Compiler, English resolver, service API, MCP server and CLI (Python) |
 
-Stack: dbt + DuckDB. Everything runs locally in about 10 seconds with no accounts or cloud setup. The SQL is portable to Snowflake or BigQuery with minor dialect changes.
+## The semantic layer and MCP server
+
+### Why a semantic layer, not text-to-SQL
+
+An LLM writing SQL against raw tables will eventually invent its own definition of ARR. Typical mistakes are summing a balance across a quarter (3× too big), averaging ratios, or double-counting through a join. In finance, a plausible wrong number is worse than no number.
+
+So the language understanding and the math are kept apart:
+
+- **Definitions live in one reviewed file** ([`semantic_layer/metrics.yml`](semantic_layer/metrics.yml)). Each of the 19 metrics has a description, owner, certification flag and synonyms.
+- **Time roll-ups are explicit per measure.** Flows like new ARR and revenue *sum* across months. Balances like ARR, customers and deferred revenue take the *period-end* value. Beginning ARR takes the *period-start* value. Ratios like NRR are computed from rolled-up numerators and denominators, never averaged.
+- **The compiler only emits names from the catalog.** Every user-supplied value (dates, filter values) is a bound parameter, so nothing typed by a person or a model reaches the SQL text.
+- **Every answer carries its audit trail:** how the question was understood, which words were ignored, the definitions used, the exact SQL with parameters, and the data's freshness.
+- **The warehouse connection is sandboxed:** read-only, with file and network access disabled and locked.
+
+### MCP tools
+
+| Tool | What it does |
+|---|---|
+| `ask` | Plain-English question → interpretation + governed answer + SQL |
+| `list_metrics` / `describe_metric` | The metric catalog: definitions, formulas, owners, allowed dimensions |
+| `query_metrics` | Structured query: metrics × dimensions × grain × time window × filters |
+| `list_saved_queries` / `run_saved_query` | Curated views: ARR bridge, board KPIs, retention by segment, revenue tie-out... |
+| `get_control_status` | Control results and exception detail from the latest build |
+| `run_sql` | Escape hatch: one sandboxed SELECT, labeled uncertified |
+
+When Claude is the client, it handles the open-ended language and calls `query_metrics` directly. The built-in `ask` resolver also works on its own with any client. It's deterministic on purpose: the same question always maps to the same definitions, and it reports exactly how it read the question.
+
+### Things you can ask
+
+```
+python -m finance_semantic ask "what is our ARR?"
+python -m finance_semantic ask "ARR by segment last 6 months"
+python -m finance_semantic ask "quarterly net new ARR in 2025"
+python -m finance_semantic ask "net revenue retention for EMEA last 4 quarters"
+python -m finance_semantic ask "which industry has the most churned ARR in 2025"
+python -m finance_semantic ask "show me the ARR bridge"
+python -m finance_semantic ask "board KPIs"
+python -m finance_semantic ask "does revenue tie to the GL?" --sql
+python -m finance_semantic ask "any control exceptions?"
+```
+
+### Connect it to Claude
+
+Build the warehouse once (`python run_pipeline.py`). Then add the server to Claude Desktop's config file (Settings → Developer → Edit Config), using the full path to your clone:
+
+```json
+{
+  "mcpServers": {
+    "saas-finance-warehouse": {
+      "command": "python",
+      "args": ["/full/path/to/saas-finance-warehouse/mcp_server.py"]
+    }
+  }
+}
+```
+
+On Windows, use a path like `"C:\\Users\\you\\saas-finance-warehouse\\mcp_server.py"`. If you use a virtual environment, point `command` at that environment's Python. With Claude Code, run `claude mcp add saas-finance-warehouse -- python /full/path/to/mcp_server.py`.
 
 ## Controls
 
-The full matrix, with risk, objective, assertion, frequency and owner for each control, is in [`controls/control_matrix.yml`](controls/control_matrix.yml).
+The full matrix, with risk, objective, assertion, frequency and owner, is in [`controls/control_matrix.yml`](controls/control_matrix.yml).
 
 | ID | Control | Planted error it catches |
 |---|---|---|
@@ -100,44 +169,54 @@ The full matrix, with risk, objective, assertion, frequency and owner for each c
 
 Design choices behind the controls:
 
-- **Controls are models, not just tests.** Each one returns its exception rows as a table, so the exceptions can be queried, exported and tracked. A dbt test on each control raises a *warning* rather than failing the build, because a control finding something is the control working. Data-integrity tests (keys, accepted values, schedules summing to invoices) are *errors* and do stop the build.
+- **Controls are models, not just tests.** Each returns its exception rows as a table that can be queried, exported and tracked, including through the MCP server. A control finding something raises a *warning* rather than failing the build, because that's the control working. Data-integrity tests (keys, accepted values, schedules summing to invoices) are *errors* and do stop the build.
 - **Full population, not samples.** Every invoice, journal line and month is tested on every run.
-- **The controls are tested too.** `pytest` runs the pipeline twice. On seeded data, every planted error must be caught by its control and nothing else may be flagged. On clean data, every control must pass. In audit terms, that's a test of design with known exceptions, automated.
+- **The controls are tested too.** On seeded data, every planted error must be caught by its control and nothing else may be flagged. On clean data, every control must pass. In audit terms, that's an automated test of design.
 - **Evidence is generated, not assembled.** Each run writes an evidence package: what was tested, a fingerprint of the exact source files, the result and the exception detail.
 
 ## Metric definitions
 
-The ARR, NRR/GRR, revenue and deferred-revenue definitions, including the judgment calls (customer-level netting, reactivation kept separate from new, monthly proration), are written down in [`docs/metric_definitions.md`](docs/metric_definitions.md).
+The judgment calls are written down in [`docs/metric_definitions.md`](docs/metric_definitions.md): customer-level netting, reactivation kept separate from new, cohort NRR/GRR, and monthly proration.
 
 ## Run it
 
 Requires Python 3.10+.
 
 ```bash
+git clone https://github.com/cprimbas-mpinc/saas-finance-warehouse.git
+cd saas-finance-warehouse
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-python run_pipeline.py             # demo: planted errors, controls catch them
+python run_pipeline.py             # build: planted errors, controls catch them
 python run_pipeline.py --clean     # same company, nothing planted: every control passes
-pytest -q                          # control design tests + finance logic tests
+python -m finance_semantic ask "ARR by segment last 6 months"
+pytest -q                          # 46 tests: controls, finance logic, semantic layer, MCP server
 ```
 
-Explore the warehouse directly:
+## Tests
 
-```bash
-python -c "import duckdb; print(duckdb.connect('warehouse.duckdb').sql('select * from rpt_arr_rollforward order by 1 desc limit 6'))"
-```
+| Suite | What it proves |
+|---|---|
+| `tests/test_pipeline.py` | Each planted error is caught by exactly its control; clean data passes everything; the ARR and deferred revenue bridges foot; every billed dollar is recognized; the generator is deterministic |
+| `tests/test_semantic_layer.py` | Semantic answers match the warehouse's own reports; quarter roll-ups use period-end balances and summed flows; segments sum to totals; filter values can't inject SQL; `run_sql` allows one sandboxed SELECT and nothing else; common English phrasings resolve to the right metrics, dimensions and time windows |
+| `tests/test_mcp_server.py` | A real MCP client lists 8 read-only tools and gets correct answers and clean error messages |
+
+## Roadmap
+
+This is a living project; see [`CHANGELOG.md`](CHANGELOG.md).
+
+- **Next:** daily revenue proration, mid-term amendments and credit memos; a persisted exception log with status and root cause; a metrics-change review workflow (who changed a definition, when, and why).
+- **Then:** Snowflake target alongside DuckDB; scheduled builds on a close calendar; exception routing to owners; usage-based billing and multi-currency.
+- **AI:** variance commentary drafted from the semantic layer and reviewed by a person; anomaly triage on control exceptions.
 
 ## Taking this to production
 
-What would change with real systems and a team:
-
-- **Ingestion:** managed connectors (Fivetran or similar) from Salesforce, the billing system and NetSuite into Snowflake, replacing the CSV extracts. Staging models stay the same shape.
-- **Orchestration and alerting:** scheduled builds tied to the close calendar. Control exceptions route to the owner in Slack or a ticket queue with an SLA, and close sign-off is gated on REV-01 and REV-02 being clear or explained.
-- **Change management (ITGC):** the CI workflow here runs on every pull request. In production, branch protection plus required review on `models/controls/` would be the change-management control auditors test.
-- **Revenue precision:** daily proration, mid-term amendments, credit memos, multi-currency, and usage-based components.
-- **Exception lifecycle:** a persisted exception log with status, root cause and resolution, so evidence shows not just what was found but how it was closed.
+- **Ingestion:** managed connectors (Fivetran or similar) from Salesforce, the billing system and NetSuite into Snowflake, replacing the CSV extracts. Staging keeps the same shape.
+- **Orchestration and alerting:** builds tied to the close calendar; control exceptions routed to owners with an SLA; close sign-off gated on REV-01 and REV-02 being clear or explained.
+- **Change management (ITGC):** CI runs on every pull request. Branch protection plus required review on `models/controls/` and `semantic_layer/` would be the change-management controls auditors test.
+- **Access:** the MCP server runs behind SSO with role-based access to sensitive metrics, and every query is logged.
 
 ---
 

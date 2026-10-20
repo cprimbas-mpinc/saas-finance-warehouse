@@ -43,3 +43,16 @@ models:
 
   - name: rpt_revenue_reconciliation
     description: Monthly subledger-to-GL reconciliation for revenue (4000) and deferred revenue (2400).
+
+  - name: fct_customer_retention_pairs
+    description: Customer x month pairs for the trailing-12 retention cohort (arr a year ago vs today).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [customer_id, month_start]
+
+  - name: fct_billings
+    description: Invoice grain billings with billing month and customer attributes.
+    columns:
+      - name: invoice_id
+        data_tests: [unique, not_null]

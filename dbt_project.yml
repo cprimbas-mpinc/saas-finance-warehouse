@@ -19,7 +19,7 @@ vars:
 models:
   saas_finance_warehouse:
     staging:
-      +materialized: view
+      +materialized: table   # tables, not views: the built warehouse never reads raw files again
     intermediate:
       +materialized: table
     marts:

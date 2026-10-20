@@ -1,8 +1,12 @@
--- Invoice x month recognized revenue, limited to the reporting window.
+-- Invoice x month recognized revenue, limited to the reporting window. Invoices whose customer is
+-- missing from the master (control DQ-01) keep their revenue under an 'Unmapped' segment, so
+-- revenue totals always tie to the subledger and the GL reconciliation.
 select
     r.invoice_id,
     r.customer_id,
-    c.segment,
+    coalesce(c.segment, 'Unmapped')    as segment,
+    coalesce(c.region, 'Unmapped')     as region,
+    coalesce(c.industry, 'Unmapped')   as industry,
     r.revenue_month,
     r.recognized_amount
 from {{ ref('int_invoice_revenue_schedule') }} r
