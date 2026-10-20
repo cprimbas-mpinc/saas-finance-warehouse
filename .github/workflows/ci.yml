@@ -1,15 +1,41 @@
 name: ci
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+
 jobs:
-  build-and-test:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - run: pip install ruff==0.16.8
+      - run: ruff check .
+
+  build-and-test:
+    needs: lint
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
       - run: pip install -r requirements.txt
-      - name: Pipeline (seeded demo)
+      - name: Build warehouse (seeded demo)
         run: python run_pipeline.py
-      - name: Control design tests (seeded + clean runs)
+      - name: Tests (controls, finance logic, semantic layer, MCP server)
         run: pytest -q
+      - name: Upload control evidence
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: control-evidence
+          path: evidence/
