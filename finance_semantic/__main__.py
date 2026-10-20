@@ -4,6 +4,7 @@
     python -m finance_semantic metrics
     python -m finance_semantic saved [name]
     python -m finance_semantic controls
+    python -m finance_semantic lint           # catalog governance checks (CI runs this)
     python -m finance_semantic serve          # start the MCP server on stdio
 """
 
@@ -70,8 +71,18 @@ def main(argv: list[str] | None = None) -> None:
     s = sub.add_parser("saved", help="list saved queries, or run one by name")
     s.add_argument("name", nargs="?")
     sub.add_parser("controls", help="show control status")
+    sub.add_parser("lint", help="run catalog governance checks")
     sub.add_parser("serve", help="run the MCP server on stdio")
     args = ap.parse_args(argv)
+
+    if args.cmd == "lint":
+        from .catalog import load_catalog
+        from .governance import lint_catalog
+        findings = lint_catalog(load_catalog())
+        for f in findings:
+            print("FAIL", f)
+        print(f"{len(findings)} finding(s)" if findings else "Catalog OK: all governance checks passed")
+        sys.exit(1 if findings else 0)
 
     if args.cmd == "serve":
         from .server import main as serve

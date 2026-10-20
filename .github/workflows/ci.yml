@@ -29,6 +29,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - run: pip install -r requirements.txt
+      - name: Semantic layer governance checks
+        run: python -m finance_semantic lint
       - name: Build warehouse (seeded demo)
         run: python run_pipeline.py
       - name: Tests (controls, finance logic, semantic layer, MCP server)
