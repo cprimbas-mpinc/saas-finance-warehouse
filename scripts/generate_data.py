@@ -376,11 +376,11 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
     write_csv(out / "customers.csv", g.customers)
     write_csv(out / "contract_lines.csv", [{
-        "line_id": l.line_id, "subscription_id": l.subscription_id, "customer_id": l.customer_id,
-        "product": l.product, "start_month": l.start_month.isoformat(),
-        "end_month": l.end_month.isoformat() if l.end_month else "", "mrr": f"{l.mrr:.2f}",
-        "billing_frequency": l.billing_frequency,
-    } for l in g.lines])
+        "line_id": ln.line_id, "subscription_id": ln.subscription_id, "customer_id": ln.customer_id,
+        "product": ln.product, "start_month": ln.start_month.isoformat(),
+        "end_month": ln.end_month.isoformat() if ln.end_month else "", "mrr": f"{ln.mrr:.2f}",
+        "billing_frequency": ln.billing_frequency,
+    } for ln in g.lines])
     write_csv(out / "invoices.csv", g.invoices)
     write_csv(out / "gl_journal_lines.csv", g.gl_lines)
     (out / "seeded_exceptions.json").write_text(json.dumps(

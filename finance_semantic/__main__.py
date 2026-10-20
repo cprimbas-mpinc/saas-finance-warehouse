@@ -50,10 +50,10 @@ def print_result(result: dict) -> None:
         table = [[fmt(r[c["name"]], c.get("format")) for c in cols] for r in result["rows"]]
         widths = [max(len(h), *(len(row[i]) for row in table)) for i, h in enumerate(headers)]
         print()
-        print("  ".join(h.ljust(w) for h, w in zip(headers, widths)))
+        print("  ".join(h.ljust(w) for h, w in zip(headers, widths, strict=True)))
         print("  ".join("-" * w for w in widths))
         for row in table:
-            print("  ".join(v.rjust(w) if i else v.ljust(w) for i, (v, w) in enumerate(zip(row, widths))))
+            print("  ".join(v.rjust(w) if i else v.ljust(w) for i, (v, w) in enumerate(zip(row, widths, strict=True))))
     for note in result.get("notes", []):
         print("Note:", note)
 

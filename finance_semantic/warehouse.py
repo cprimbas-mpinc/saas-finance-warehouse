@@ -40,7 +40,7 @@ class Warehouse:
 
     def records(self, sql: str, params: list | None = None) -> list[dict]:
         cols, rows = self.fetch(sql, params)
-        return [{c: to_json(v) for c, v in zip(cols, r)} for r in rows]
+        return [{c: to_json(v) for c, v in zip(cols, r, strict=True)} for r in rows]
 
     def month_bounds(self) -> tuple[date, date]:
         _, rows = self.fetch("select min(month_start), max(month_start) from int_month_spine")

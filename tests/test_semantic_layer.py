@@ -7,8 +7,8 @@ from datetime import date
 
 import duckdb
 import pytest
-
 from conftest import open_warehouse
+
 from finance_semantic import SemanticError, load_catalog
 from finance_semantic.nl import resolve
 

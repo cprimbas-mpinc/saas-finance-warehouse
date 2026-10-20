@@ -1,5 +1,7 @@
 # SaaS Finance Warehouse
 
+[![ci](https://github.com/cprimbas-mpinc/saas-finance-warehouse/actions/workflows/ci.yml/badge.svg)](https://github.com/cprimbas-mpinc/saas-finance-warehouse/actions/workflows/ci.yml) ![python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue) ![dbt](https://img.shields.io/badge/dbt-1.12-orange) ![license](https://img.shields.io/badge/license-MIT-green)
+
 A working finance data platform for a B2B SaaS company, in three layers:
 
 1. **A warehouse** (dbt + DuckDB) with the subscription metrics leadership runs the business on (ARR bridge, NRR/GRR) and the revenue and deferred-revenue numbers that go into the financial statements.
@@ -187,7 +189,7 @@ git clone https://github.com/cprimbas-mpinc/saas-finance-warehouse.git
 cd saas-finance-warehouse
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.txt     # add -dev for the linter
 
 python run_pipeline.py             # build: planted errors, controls catch them
 python run_pipeline.py --clean     # same company, nothing planted: every control passes

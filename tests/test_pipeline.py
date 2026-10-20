@@ -15,7 +15,6 @@ import sys
 from pathlib import Path
 
 import duckdb
-
 from conftest import open_warehouse
 
 ROOT = Path(__file__).resolve().parents[1]
