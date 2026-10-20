@@ -182,6 +182,12 @@ class FinanceSemanticLayer:
         from .forecast import forecast_arr
         return forecast_arr(self, months=months, window=window)
 
+    # ------------------------------------------------------------------ variance explanation
+    def explain_change(self, metric: str, period: str | None = None, compare_to: str = "prior_period",
+                       grain: str = "month", dimensions: list[str] | None = None) -> dict:
+        from .explain import explain_change
+        return explain_change(self, metric, period=period, compare_to=compare_to, grain=grain, dimensions=dimensions)
+
     # ------------------------------------------------------------------ escape hatch
     def run_sql(self, sql: str, limit: int = 200) -> dict:
         statements = duckdb.extract_statements(sql)
