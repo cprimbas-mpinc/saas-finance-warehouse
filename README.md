@@ -118,7 +118,8 @@ So the language understanding and the math are kept apart:
 | `list_metrics` / `describe_metric` | The metric catalog: definitions, formulas, owners, allowed dimensions |
 | `query_metrics` | Structured query: metrics × dimensions × grain × time window × filters |
 | `list_saved_queries` / `run_saved_query` | Curated views: ARR bridge, board KPIs, retention by segment, revenue tie-out... |
-| `get_control_status` | Control results and exception detail from the latest build |
+| `get_control_status` | Control results, exception detail and the exception log (owner, status, aging) |
+| `forecast_arr` | Driver-based ARR bridge forecast with its backtest record and range (labeled uncertified) |
 | `run_sql` | Escape hatch: one sandboxed SELECT, labeled uncertified |
 
 When Claude is the client, it handles the open-ended language and calls `query_metrics` directly. The built-in `ask` resolver also works on its own with any client. It's deterministic on purpose: the same question always maps to the same definitions, and it reports exactly how it read the question.
@@ -135,6 +136,17 @@ python -m finance_semantic ask "show me the ARR bridge"
 python -m finance_semantic ask "board KPIs"
 python -m finance_semantic ask "does revenue tie to the GL?" --sql
 python -m finance_semantic ask "any control exceptions?"
+```
+
+### Forecasting
+
+`python -m finance_semantic forecast` projects the ARR bridge (new, expansion, contraction, churn) up to 12 months from the governed history, and shows its own track record: a rolling-origin backtest against a straight-line trend at every horizon. On the demo data it beats the trend by a small margin out to about 5 months, ties at 6, and runs low because new ARR has been rising. The range comes from the backtest's own errors. Method, results and limits: [`docs/forecasting.md`](docs/forecasting.md).
+
+```
+Month       ARR forecast            Low           High
+2026-01      $13,851,055    $13,535,774    $14,399,733
+2026-03      $14,993,029    $14,460,221    $16,160,111
+2026-06      $16,707,654    $16,581,016    $18,494,765
 ```
 
 ### Governance checks
@@ -204,7 +216,8 @@ pip install -r requirements.txt     # add -dev for the linter
 python run_pipeline.py             # build: planted errors, controls catch them
 python run_pipeline.py --clean     # same company, nothing planted: every control passes
 python -m finance_semantic ask "ARR by segment last 6 months"
-pytest -q                          # 46 tests: controls, finance logic, semantic layer, MCP server
+python -m finance_semantic forecast 6
+pytest -q                          # 61 tests: controls, finance logic, semantic layer, forecast, MCP server
 ```
 
 ## Tests
@@ -213,13 +226,15 @@ pytest -q                          # 46 tests: controls, finance logic, semantic
 |---|---|
 | `tests/test_pipeline.py` | Each planted error is caught by exactly its control; clean data passes everything; the ARR and deferred revenue bridges foot; every billed dollar is recognized; the generator is deterministic |
 | `tests/test_semantic_layer.py` | Semantic answers match the warehouse's own reports; quarter roll-ups use period-end balances and summed flows; segments sum to totals; filter values can't inject SQL; `run_sql` allows one sandboxed SELECT and nothing else; common English phrasings resolve to the right metrics, dimensions and time windows |
-| `tests/test_mcp_server.py` | A real MCP client lists 8 read-only tools and gets correct answers and clean error messages |
+| `tests/test_governance.py` | The catalog linter passes on the real catalog and catches each kind of bad definition |
+| `tests/test_forecast.py` | The forecast bridge foots and chains from the last actual month; the range contains the forecast; the backtest scores every horizon; on synthetic data with stable drivers the model is exact and the trend isn't |
+| `tests/test_mcp_server.py` | A real MCP client lists 9 read-only tools and gets correct answers and clean error messages |
 
 ## Roadmap
 
 This is a living project; see [`CHANGELOG.md`](CHANGELOG.md).
 
-- **Next:** daily revenue proration, mid-term amendments and credit memos; a persisted exception log with status and root cause; a metrics-change review workflow (who changed a definition, when, and why).
+- **Next:** explain-change (decompose a metric's movement into drivers and segments, as grounded input for variance commentary); daily revenue proration, mid-term amendments and credit memos; a metrics-change review workflow (who changed a definition, when, and why).
 - **Then:** Snowflake target alongside DuckDB; scheduled builds on a close calendar; exception routing to owners; usage-based billing and multi-currency.
 - **AI:** variance commentary drafted from the semantic layer and reviewed by a person; anomaly triage on control exceptions.
 

@@ -1,6 +1,6 @@
 # Control Evidence Package
 
-**Company:** Halyard Software, Inc. (synthetic) · **Run:** 2026-10-20 10:54 UTC · **Data mode:** seeded (seed 42)
+**Company:** Halyard Software, Inc. (synthetic) · **Run:** 2026-10-20 11:02 UTC · **Data mode:** seeded (seed 42)
 
 Each control below is an automated query over the full population (not a sample). A control model returns only exception rows, so an empty result is the evidence of operating effectiveness for the run.
 

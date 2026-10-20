@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **ARR forecast:** driver-based forecast of the ARR bridge (`python -m finance_semantic forecast`, MCP tool `forecast_arr`) with a rolling-origin backtest against a straight-line trend and ranges from the backtest's own errors. The metrics snapshot now carries the forecast and its track record. See `docs/forecasting.md`.
+- **Control exception log:** `rpt_control_exception_log` tracks each control finding to an owner, root cause, status and due date, flags unassigned and overdue items, and is surfaced in the evidence package and `get_control_status`. Controls are registered once in a single macro.
+- **Catalog governance:** `python -m finance_semantic lint` checks owners, descriptions, synonym collisions, time roll-up rules and resolver round-trips; CI fails on any finding.
+- **Engineering:** ruff linting, `pyproject.toml`, CI on Python 3.10 to 3.12 with the evidence package uploaded as a build artifact, and four architecture decision records in `docs/adr/`.
+
 ## 0.2.0 (2026-10-20)
 
 - **Semantic layer:** 19 governed metrics across ARR, retention, revenue, billings, deferred revenue and GL reconciliation, defined in `semantic_layer/metrics.yml`, with explicit time roll-ups (flows sum, balances take period-end) and ratio metrics computed from rolled-up parts.

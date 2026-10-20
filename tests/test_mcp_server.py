@@ -9,7 +9,7 @@ import pytest
 from mcp.client.client import Client
 
 EXPECTED_TOOLS = {"ask", "list_metrics", "describe_metric", "query_metrics", "list_saved_queries",
-                  "run_saved_query", "get_control_status", "run_sql"}
+                  "run_saved_query", "get_control_status", "forecast_arr", "run_sql"}
 
 
 @pytest.fixture(scope="module")
@@ -68,3 +68,10 @@ def test_saved_query_and_controls_over_mcp(server):
 def test_errors_come_back_as_messages_not_crashes(server):
     assert "Unknown metric" in call(server, "query_metrics", {"metrics": ["ebitda"]})["error"]
     assert "Only a single read-only SELECT" in call(server, "run_sql", {"sql": "drop table dim_customers"})["error"]
+
+
+def test_forecast_over_mcp(server):
+    out = call(server, "forecast_arr", {"months": 3})
+    assert len(out["forecast"]) == 3
+    assert out["certified"] is False
+    assert "backtest" in out and out["assumptions"]["trailing_window_months"] == 6

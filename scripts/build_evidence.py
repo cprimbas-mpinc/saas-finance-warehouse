@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -39,6 +40,37 @@ def fingerprint(raw: Path) -> list[tuple[str, int, str]]:
         data = f.read_bytes()
         rows.append((f.name, data.count(b"\n") - 1, hashlib.sha256(data).hexdigest()[:16]))
     return rows
+
+
+def forecast_section(warehouse: str) -> list[str]:
+    """Six-month ARR forecast from the semantic layer, with its backtest, so the projection and its
+    track record travel together."""
+    sys.path.insert(0, str(ROOT))
+    from finance_semantic import FinanceSemanticLayer
+
+    fc = FinanceSemanticLayer(warehouse_path=warehouse).forecast_arr(months=6)
+    a = fc["assumptions"]
+    return [
+        "## ARR forecast, next 6 months (projection, uncertified)",
+        "",
+        f"Driver-based bridge forecast from the last actual month ({fc['last_actual_month']}). Trailing "
+        f"{a['trailing_window_months']}-month drivers: new {money(a['new_arr_per_month'])}/month, expansion "
+        f"{a['monthly_expansion_rate']:.2%}/month, contraction {a['monthly_contraction_rate']:.2%}/month, churn "
+        f"{a['monthly_churn_rate']:.2%}/month. Method and caveats: [docs/forecasting.md](../docs/forecasting.md).",
+        "",
+        md_table([(r["period"], money(r["beginning_arr"]), money(r["new_arr"] + r["reactivation_arr"]),
+                   money(r["expansion_arr"]), money(r["contraction_arr"] + r["churned_arr"]), money(r["arr"]),
+                   money(r["arr_low"]), money(r["arr_high"])) for r in fc["forecast"]],
+                 ["Month", "Beginning", "New + reactivation", "Expansion", "Contraction + churn", "Ending",
+                  "Low (p10)", "High (p90)"]),
+        "",
+        "Backtest (rolling origin) versus a straight-line trend:",
+        "",
+        md_table([(f"+{b['horizon_months']}", b["origins_tested"], f"{b['driver_mape']:.1%}",
+                   f"{b['naive_mape']:.1%}", f"{b['driver_bias']:+.1%}") for b in fc["backtest"]["by_horizon"]],
+                 ["Months ahead", "Origins", "Driver MAPE", "Naive MAPE", "Driver bias"]),
+        "",
+    ]
 
 
 def main() -> None:
@@ -162,6 +194,8 @@ def main() -> None:
                  ["Month", "Subledger revenue", "GL revenue", "Variance", "Subledger deferred", "GL deferred"]),
         "",
     ]
+    con.close()  # the semantic layer opens its own sandboxed connection
+    snapshot += forecast_section(args.warehouse)
     (out / "metrics_snapshot.md").write_text("\n".join(snapshot), encoding="utf-8")
 
     for row in summary:

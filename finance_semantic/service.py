@@ -177,6 +177,11 @@ class FinanceSemanticLayer:
                 "exception_log": log,
                 "data_window": self._window()}
 
+    # ------------------------------------------------------------------ forecasting
+    def forecast_arr(self, months: int = 6, window: int = 6) -> dict:
+        from .forecast import forecast_arr
+        return forecast_arr(self, months=months, window=window)
+
     # ------------------------------------------------------------------ escape hatch
     def run_sql(self, sql: str, limit: int = 200) -> dict:
         statements = duckdb.extract_statements(sql)
