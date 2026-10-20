@@ -1,0 +1,17 @@
+[project]
+name = "saas-finance-warehouse"
+version = "0.2.0"
+description = "SaaS finance data warehouse with SOX-style controls, a governed semantic layer and an MCP server."
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+extend-exclude = ["target", "dbt_packages", "logs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501"]  # long SQL and message strings read better unwrapped
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

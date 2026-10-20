@@ -41,7 +41,7 @@ STOPWORDS = {"what", "is", "are", "was", "were", "our", "the", "a", "an", "of", 
              "how", "much", "many", "show", "me", "give", "tell", "and", "vs", "versus", "with", "by",
              "per", "each", "did", "do", "does", "we", "have", "has", "been", "this", "that", "please",
              "can", "you", "i", "my", "it", "at", "as", "from", "since", "last", "past", "over", "which",
-             "has", "had", "up", "down", "be", "compare", "compared", "between", "current", "currently",
+             "had", "up", "down", "be", "compare", "compared", "between", "current", "currently",
              "today", "now", "latest", "month", "months", "quarter", "quarters", "year", "years", "trend",
              "split", "broken", "across", "all", "total", "number", "s", "gl", "ledger"}
 
@@ -99,7 +99,7 @@ class _Text:
         return found
 
     def leftover(self) -> list[str]:
-        chars = "".join(c if not u else " " for c, u in zip(self.text, self.used))
+        chars = "".join(c if not u else " " for c, u in zip(self.text, self.used, strict=True))
         return [w for w in chars.split() if w not in STOPWORDS and not w.isdigit()]
 
 
