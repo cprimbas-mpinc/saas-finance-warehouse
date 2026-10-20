@@ -183,6 +183,7 @@ Design choices behind the controls:
 - **Controls are models, not just tests.** Each returns its exception rows as a table that can be queried, exported and tracked, including through the MCP server. A control finding something raises a *warning* rather than failing the build, because that's the control working. Data-integrity tests (keys, accepted values, schedules summing to invoices) are *errors* and do stop the build.
 - **Full population, not samples.** Every invoice, journal line and month is tested on every run.
 - **The controls are tested too.** On seeded data, every planted error must be caught by its control and nothing else may be flagged. On clean data, every control must pass. In audit terms, that's an automated test of design.
+- **Exceptions are tracked to resolution.** `rpt_control_exception_log` joins each finding to an owner, root cause, action and due date (a seed file stands in for a ticketing system). It flags anything unassigned or overdue, and marks an item *cleared* once the controls stop finding it. In the demo, the unsupported $25K revenue entry is still under investigation and overdue, and the orphan invoice hasn't been triaged.
 - **Evidence is generated, not assembled.** Each run writes an evidence package: what was tested, a fingerprint of the exact source files, the result and the exception detail.
 
 ## Metric definitions

@@ -15,6 +15,7 @@ vars:
   window_start: "2023-01-01"      # first reporting month
   window_end: "2025-12-01"        # last reporting month
   recon_threshold_usd: 500        # REV-01 / REV-02 investigation threshold
+  as_of_date: "2026-01-15"        # exception-log aging date (first close after the data window)
 
 models:
   saas_finance_warehouse:
@@ -33,3 +34,9 @@ seeds:
     chart_of_accounts:
       +column_types:
         account_number: varchar
+    control_exception_workflow:
+      +column_types:
+        exception_key: varchar
+        identified_date: date
+        due_date: date
+        resolved_date: date

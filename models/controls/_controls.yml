@@ -29,3 +29,16 @@ models:
     columns:
       - name: control_id
         data_tests: [unique, not_null]
+
+  - name: rpt_control_exception_log
+    description: Every control exception with its owner, root cause, action and status, plus aging.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [control_id, exception_key]
+    columns:
+      - name: status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["unassigned", "open", "investigating", "resolved", "cleared"]

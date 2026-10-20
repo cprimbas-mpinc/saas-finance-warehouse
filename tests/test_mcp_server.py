@@ -60,7 +60,9 @@ def test_structured_query_over_mcp(server):
 
 def test_saved_query_and_controls_over_mcp(server):
     assert call(server, "run_saved_query", {"name": "arr_bridge"})["row_count"] == 12
-    assert "of 8 controls passed" in call(server, "get_control_status", {})["summary"]
+    status = call(server, "get_control_status", {})
+    assert "2 of 8 controls passed; 2 exception(s) still open, 1 overdue, 1 awaiting triage" == status["summary"]
+    assert len(status["exception_log"]) == 6
 
 
 def test_errors_come_back_as_messages_not_crashes(server):

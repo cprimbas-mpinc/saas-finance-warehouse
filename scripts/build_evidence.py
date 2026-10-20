@@ -100,6 +100,19 @@ def main() -> None:
         "",
         md_table(fp, ["File", "Rows", "SHA-256 (first 16)"]),
         "",
+        "## Exception log",
+        "",
+        "Every exception found, tracked to resolution. `unassigned` = found but not yet triaged; "
+        "`cleared` = logged earlier and no longer found by the controls.",
+        "",
+        md_table(con.sql("""
+            select control_id, exception_key, status, coalesce(owner, ''), coalesce(cast(due_date as varchar), ''),
+                   coalesce(cast(days_to_resolve as varchar), ''),
+                   case when is_overdue then '**overdue** (' || days_open || ' days open)' else '' end,
+                   coalesce(root_cause, '')
+            from rpt_control_exception_log order by control_id, exception_key""").fetchall(),
+                 ["Control", "Exception", "Status", "Owner", "Due", "Days to resolve", "Aging", "Root cause"]),
+        "",
         "## Control detail",
         "",
         "\n\n".join(details),

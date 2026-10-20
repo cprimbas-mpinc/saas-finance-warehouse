@@ -115,3 +115,24 @@ def test_generator_is_deterministic(tmp_path):
                        capture_output=True)
         outs.append({f.name: f.read_bytes() for f in out.glob("*.csv")})
     assert outs[0] == outs[1]
+
+
+# ---------------------------------------------------------------------------- exception log
+
+def test_exception_log_tracks_every_finding(seeded):
+    log = {(c, k): (s, overdue) for c, k, s, overdue in connect(seeded).sql(
+        "select control_id, exception_key, status, is_overdue from rpt_control_exception_log").fetchall()}
+    manifest = json.loads((seeded / "data" / "raw" / "seeded_exceptions.json").read_text())
+    assert {(e["control_id"], e["key"]) for e in manifest["exceptions"]} == set(log)
+    assert log[("REV-01", "2025-06-01")] == ("investigating", True)    # unsupported top-side entry, still open
+    assert log[("DQ-01", manifest_key(manifest, "DQ-01"))][0] == "unassigned"  # found, never triaged
+    assert sum(1 for s, _ in log.values() if s == "resolved") == 4
+
+
+def test_exception_log_marks_fixed_items_cleared_on_clean_data(clean):
+    statuses = [s for (s,) in connect(clean).sql("select status from rpt_control_exception_log").fetchall()]
+    assert statuses and set(statuses) == {"cleared"}
+
+
+def manifest_key(manifest: dict, control_id: str) -> str:
+    return next(e["key"] for e in manifest["exceptions"] if e["control_id"] == control_id)

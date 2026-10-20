@@ -1,0 +1,6 @@
+control_id,exception_key,status,owner,root_cause,action,identified_date,due_date,resolved_date
+REV-01,2025-06-01,investigating,Revenue Accounting Manager,"Manual entry JE-2025-06-006 ""Q2 revenue true-up per sales leadership"" has no billing-subledger support",Support requested from preparer; reverse in the next close if none is provided,2025-07-03,2025-07-10,
+BIL-01,INV-001227,resolved,Billing Operations Lead,Invoice batch re-run after a timeout billed an annual term a second time,Duplicate invoice voided and customer notified; batch job made idempotent,2025-04-08,2025-04-15,2025-04-11
+BIL-02,INV-000972,resolved,Billing Operations Lead,Price uplift loaded in billing before the contract amendment was signed,Credit memo for $2400 issued; billing price changes now require a signed amendment,2025-02-06,2025-02-13,2025-02-12
+GL-01,JE-2025-03-006,resolved,General Ledger Manager,"Transposition error on a manual accrual (12,400 debit vs 12,040 credit)",Entry corrected; ERP configured to reject unbalanced manual entries,2025-03-31,2025-04-04,2025-04-02
+GL-02,JE-2025-09-006,resolved,Controller,Preparer held approval rights and approved their own entry,Entry re-reviewed and approved by the Controller; self-approval permission removed,2025-09-30,2025-10-07,2025-10-01
