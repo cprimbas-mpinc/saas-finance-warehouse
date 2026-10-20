@@ -137,6 +137,15 @@ python -m finance_semantic ask "does revenue tie to the GL?" --sql
 python -m finance_semantic ask "any control exceptions?"
 ```
 
+### Governance checks
+
+`python -m finance_semantic lint` reviews the catalog the way a metrics owner would before a definition ships, and CI fails the build on any finding:
+
+- every metric has an owner, a real description and synonyms
+- no phrase points at two different metrics, since ambiguity there means two people get two numbers
+- balances and ratios never sum across months
+- every metric's own name, asked as a question, resolves back to that metric, and every saved-query phrase reaches its saved query
+
 ### Connect it to Claude
 
 Build the warehouse once (`python run_pipeline.py`). Then add the server to Claude Desktop's config file (Settings → Developer → Edit Config), using the full path to your clone:
