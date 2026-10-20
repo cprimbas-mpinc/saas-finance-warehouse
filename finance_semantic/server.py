@@ -28,12 +28,13 @@ How to answer finance questions:
 2. If `ask` can't resolve it, or you need finer control, call `list_metrics`, then `query_metrics`.
 3. For recurring views (ARR bridge, board KPIs, revenue tie-out) use `run_saved_query`.
 4. For "do the numbers tie?" or SOX / control questions, call `get_control_status`.
+   For "where will ARR be in N months?", call `forecast_arr` and report its assumptions and backtest error.
 5. Use `run_sql` only for questions no metric covers, and say the result is uncertified.
 State the metric definition when it matters to the answer. If the user asks how a number was computed,
 show the returned SQL. Contraction and churn are negative numbers; NRR and GRR are ratios (1.05 = 105%).
 """
 
-mcp = MCPServer("saas-finance-warehouse", instructions=INSTRUCTIONS, version="0.2.0")
+mcp = MCPServer("saas-finance-warehouse", instructions=INSTRUCTIONS, version="0.3.0")
 READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
 
@@ -98,6 +99,14 @@ def get_control_status(include_exceptions: bool = True) -> dict[str, Any]:
     """SOX-style control results from the latest build: each control's objective, owner, PASS or
     EXCEPTION, and the exception detail to investigate."""
     return _safe(layer().control_status, include_exceptions=include_exceptions)
+
+
+@mcp.tool(annotations=READ_ONLY)
+def forecast_arr(months: int = 6, window: int = 6) -> dict[str, Any]:
+    """Driver-based forecast of the ARR bridge (new, expansion, contraction, churn) for 1-12 months,
+    with assumptions, backtest accuracy versus a naive trend, and backtest-derived ranges. Uncertified:
+    present it as a projection, not a reported number."""
+    return _safe(layer().forecast_arr, months=months, window=window)
 
 
 @mcp.tool(annotations=READ_ONLY)

@@ -5,6 +5,7 @@
     python -m finance_semantic saved [name]
     python -m finance_semantic controls
     python -m finance_semantic lint           # catalog governance checks (CI runs this)
+    python -m finance_semantic forecast [months]
     python -m finance_semantic serve          # start the MCP server on stdio
 """
 
@@ -72,6 +73,8 @@ def main(argv: list[str] | None = None) -> None:
     s.add_argument("name", nargs="?")
     sub.add_parser("controls", help="show control status")
     sub.add_parser("lint", help="run catalog governance checks")
+    f = sub.add_parser("forecast", help="driver-based ARR forecast with backtest")
+    f.add_argument("months", nargs="?", type=int, default=6)
     sub.add_parser("serve", help="run the MCP server on stdio")
     args = ap.parse_args(argv)
 
@@ -114,6 +117,21 @@ def main(argv: list[str] | None = None) -> None:
             else:
                 for q in layer.list_saved_queries()["saved_queries"]:
                     print(f"{q['name']:<22} {q['title']}: {q['description']}")
+        elif args.cmd == "forecast":
+            out = layer.forecast_arr(months=args.months)
+            a = out["assumptions"]
+            print(f"Last actual {out['last_actual_month']}: {fmt(out['last_actual_arr'], 'currency')} ARR")
+            print(f"Drivers (trailing {a['trailing_window_months']} months): new {fmt(a['new_arr_per_month'], 'currency')}/mo, "
+                  f"expansion {a['monthly_expansion_rate']:.2%}/mo, contraction {a['monthly_contraction_rate']:.2%}/mo, "
+                  f"churn {a['monthly_churn_rate']:.2%}/mo\n")
+            print(f"{'Month':<9}{'ARR forecast':>15}{'Low':>15}{'High':>15}")
+            for r in out["forecast"]:
+                print(f"{r['period']:<9}{fmt(r['arr'], 'currency'):>15}{fmt(r['arr_low'], 'currency'):>15}"
+                      f"{fmt(r['arr_high'], 'currency'):>15}")
+            print(f"\n{'Backtest':<9}{'Driver MAPE':>15}{'Naive MAPE':>15}{'Origins':>15}")
+            for b in out["backtest"]["by_horizon"]:
+                print(f"{'+' + str(b['horizon_months']) + ' mo':<9}{b['driver_mape']:>15.1%}{b['naive_mape']:>15.1%}"
+                      f"{b['origins_tested']:>15}")
         elif args.cmd == "controls":
             print_result(layer.control_status(include_exceptions=False))
     except SemanticError as e:
