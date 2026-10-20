@@ -121,12 +121,17 @@ def forecast_arr(layer, months: int = 6, window: int = 6) -> dict:
     rows = []
     for h, row in enumerate(driver_forecast(history, months, window), start=1):
         band = bands.get(h)
+        low = high = None
+        if band:
+            # Backtest errors are (forecast - actual) / actual, so actual = forecast / (1 + error).
+            # The range always contains the point forecast, even if every past error had one sign.
+            low = min(row["arr"], row["arr"] / (1 + band["p90_error"]))
+            high = max(row["arr"], row["arr"] / (1 + band["p10_error"]))
         rows.append({
             "period": f"{row['period']:%Y-%m}",
             **{k: round(row[k], 2) for k in BRIDGE},
-            # Backtest errors are (forecast - actual) / actual, so actual = forecast / (1 + error).
-            "arr_low": round(row["arr"] / (1 + band["p90_error"]), 2) if band else None,
-            "arr_high": round(row["arr"] / (1 + band["p10_error"]), 2) if band else None,
+            "arr_low": round(low, 2) if low is not None else None,
+            "arr_high": round(high, 2) if high is not None else None,
         })
     drivers = _drivers(history, window)
     return {
